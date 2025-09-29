@@ -4,6 +4,14 @@
     <title>Canvas demo</title>
     <link rel="stylesheet" href="index.css">
     <style>
+        .markBox {
+            position: absolute;
+            background: white;
+            border: 2px solid #333;
+            padding: 5px;
+            cursor: move;
+            z-index: 1000;
+        }
     </style>
 </head>
 
@@ -16,16 +24,24 @@
         <button id="crossBtn">Cross</button>
         <button id="undoBtn">Undo</button>
     </div>
+    <div id="sidebar">
+        <button onclick="addBox('Q1')">Q1</button><br>
+        <button onclick="addBox('Q2')">Q2</button><br>
+        <div id="scores"></div>
+    </div>
     <canvas id="myCanvas" height="500" width="700" style="border: 1px solid black;"></canvas>
 </body>
 <script src="index.js"></script>
 <script>
     const canvas = document.getElementById("myCanvas");
     const ctx = canvas.getContext("2d");
+    ctx["will"]
+    const scoresDiv = document.getElementById("scores");
 
     let drawing = false;
     let tool = "pen";
     let history = [];
+    let marksData = {};
 
     function saveState() {
         history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
@@ -95,6 +111,34 @@
         ctx.lineTo(x + 10, y - 10);
         ctx.lineTo(x - 10, y + 10);
         ctx.stroke();
+    }
+
+    function addBox(question) {
+        const box = document.createElement("div");
+        box.className = "markBox";
+        box.style.left = "100px";
+        box.style.top = "100px";
+
+        const select = document.createElement("select");
+        [0, 1, 2, 3, 4, 5].forEach(m => {
+            const opt = document.createElement("option");
+            opt.value = m;
+            opt.textContent = m;
+            select.appendChild(opt);
+        });
+        select.onchange = () => {
+            marksData[question] = { marks: select.value, position: { x: 100, y: 100 } };
+            updateSidebar();
+        };
+        box.appendChild(select);
+        document.body.appendChild(box);
+    }
+
+    function updateSidebar() {
+        scoresDiv.innerHTML = "";
+        for (const q in marksData) {
+            scoresDiv.innerHTML += `<div>${q}: ${marksData[q].marks}</div>`;
+        }
     }
 
     canvas.addEventListener("mousedown", startDrawing);
