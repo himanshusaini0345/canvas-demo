@@ -1,0 +1,113 @@
+<html>
+
+<head>
+    <title>Canvas demo</title>
+    <link rel="stylesheet" href="index.css">
+    <style>
+    </style>
+</head>
+
+<body>
+    <h1>Canvas 2</h1>
+    <div class="toolbar">
+        <button id="penBtn">Pen</button>
+        <button id="eraserBtn">Eraser</button>
+        <button id="tickBtn">Tick</button>
+        <button id="crossBtn">Cross</button>
+        <button id="undoBtn">Undo</button>
+    </div>
+    <canvas id="myCanvas" height="500" width="700" style="border: 1px solid black;"></canvas>
+</body>
+<script src="index.js"></script>
+<script>
+    const canvas = document.getElementById("myCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let drawing = false;
+    let tool = "pen";
+    let history = [];
+
+    function saveState() {
+        history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+    }
+
+    function startDrawing(e) {
+        if (tool == "pen" || tool == "eraser") {
+            drawing = true;
+            ctx.beginPath();
+            ctx.moveTo(e.offsetX, e.offsetY);
+            saveState();
+        }
+        else if (tool == "tick") {
+            saveState();
+            drawTick(e.offsetX, e.offsetY);
+        }
+        else if (tool == "cross") {
+            saveState();
+            drawCross(e.offsetX, e.offsetY);
+        }
+
+    }
+
+    function draw(e) {
+        if (!drawing) return;
+
+        if (tool == "pen") {
+            ctx.strokeStyle = "black";
+            ctx.lineWidth = 2;
+            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.stroke();
+        }
+        else if (tool == "eraser") {
+            ctx.clearRect(e.offsetX - 8, e.offsetY - 8, 16, 16);
+        }
+    }
+
+    function stopDrawing() {
+        drawing = false;
+        ctx.closePath();
+    }
+
+    function undo() {
+        if (history.length > 0) {
+            let lastState = history.pop();
+            ctx.putImageData(lastState, 0, 0);
+        }
+    }
+
+    function drawTick(x, y) {
+        ctx.strokeStyle = "green";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(x - 10, y);
+        ctx.lineTo(x + 3, y + 10);
+        ctx.lineTo(x + 25, y - 15);
+        ctx.stroke();
+    }
+
+    function drawCross(x, y) {
+        ctx.strokeStyle = "red";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(x - 10, y - 10);
+        ctx.lineTo(x + 10, y + 10);
+        ctx.lineTo(x, y);
+        ctx.lineTo(x + 10, y - 10);
+        ctx.lineTo(x - 10, y + 10);
+        ctx.stroke();
+    }
+
+    canvas.addEventListener("mousedown", startDrawing);
+    canvas.addEventListener("mousemove", draw);
+    canvas.addEventListener("mouseup", stopDrawing);
+    canvas.addEventListener("mouseleave", stopDrawing);
+
+    document.getElementById("penBtn").addEventListener("click", () => tool = "pen");
+    document.getElementById("eraserBtn").addEventListener("click", () => tool = "eraser");
+    document.getElementById("tickBtn").addEventListener("click", () => tool = "tick");
+    document.getElementById("crossBtn").addEventListener("click", () => tool = "cross");
+    document.getElementById("undoBtn").addEventListener("click", undo);
+
+</script>
+
+</html>
