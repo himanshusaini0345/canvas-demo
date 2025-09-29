@@ -1,157 +1,643 @@
+<!DOCTYPE html>
 <html>
 
 <head>
-    <title>Canvas demo</title>
-    <link rel="stylesheet" href="index.css">
+    <meta charset="UTF-8">
+    <title>Answer Sheet Evaluator</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            background: #f5f5f5;
+        }
+
+        #sidebar {
+            width: 280px;
+            background: white;
+            padding: 20px;
+            border-right: 2px solid #ddd;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #sidebar h2 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 18px;
+            border-bottom: 2px solid #2196F3;
+            padding-bottom: 8px;
+        }
+
+        #questionsConfig {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+
+        .add-question-btn {
+            width: 100%;
+            padding: 12px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .add-question-btn:hover {
+            background: #1976D2;
+        }
+
+        .question-config {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+
+        .question-config input {
+            width: 60px;
+            padding: 5px;
+            margin: 5px 0;
+        }
+
+        .question-config button {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .question-config button:hover {
+            background: #45a049;
+        }
+
+        #resultsSection {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .result-item.total {
+            font-weight: bold;
+            border-top: 2px solid #333;
+            margin-top: 10px;
+            padding-top: 10px;
+        }
+
+        #mainArea {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .toolbar {
+            background: white;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .toolbar button {
+            padding: 10px 20px;
+            margin-right: 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .toolbar button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .toolbar button.active {
+            background: #2196F3;
+            color: white;
+        }
+
+        #penBtn {
+            background: #2196F3;
+            color: white;
+        }
+
+        #eraserBtn {
+            background: #ff9800;
+            color: white;
+        }
+
+        #tickBtn {
+            background: #4CAF50;
+            color: white;
+        }
+
+        #crossBtn {
+            background: #f44336;
+            color: white;
+        }
+
+        #undoBtn {
+            background: #9E9E9E;
+            color: white;
+        }
+
+        #clearBtn {
+            background: #f44336;
+            color: white;
+        }
+
+        #saveBtn {
+            background: #4CAF50;
+            color: white;
+        }
+
+        #canvasContainer {
+            flex: 1;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: auto;
+            position: relative;
+        }
+
+        #myCanvas {
+            display: block;
+            cursor: crosshair;
+        }
+
         .markBox {
             position: absolute;
-            background: white;
-            border: 2px solid #333;
-            padding: 5px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid #2196F3;
+            padding: 8px;
+            border-radius: 5px;
             cursor: move;
             z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            min-width: 120px;
+        }
+
+        .markBox.error {
+            border-color: #f44336;
+            background: rgba(255, 235, 238, 0.95);
+        }
+
+        .markBox-header {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .markBox input {
+            width: 100%;
+            padding: 5px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+
+        .markBox button {
+            padding: 5px 10px;
+            margin: 2px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .markBox .deleteBtn {
+            background: #f44336;
+            color: white;
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        #imageUpload {
+            display: none;
+        }
+
+        .upload-label {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #673AB7;
+            color: white;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        .upload-label:hover {
+            background: #5E35B1;
         }
     </style>
 </head>
 
 <body>
-    <h1>Canvas 2</h1>
-    <div class="toolbar">
-        <button id="penBtn">Pen</button>
-        <button id="eraserBtn">Eraser</button>
-        <button id="tickBtn">Tick</button>
-        <button id="crossBtn">Cross</button>
-        <button id="undoBtn">Undo</button>
-    </div>
     <div id="sidebar">
-        <button onclick="addBox('Q1')">Q1</button><br>
-        <button onclick="addBox('Q2')">Q2</button><br>
-        <div id="scores"></div>
+        <h2>Questions Setup</h2>
+        <div id="questionsConfig"></div>
+        <button onclick="addQuestion()" class="add-question-btn">+ Add Question</button>
+
+        <div id="resultsSection">
+            <h2>Results</h2>
+            <div id="results"></div>
+        </div>
     </div>
-    <canvas id="myCanvas" height="500" width="700" style="border: 1px solid black;"></canvas>
-</body>
-<script src="index.js"></script>
-<script>
-    const canvas = document.getElementById("myCanvas");
-    const ctx = canvas.getContext("2d");
-    ctx["will"]
-    const scoresDiv = document.getElementById("scores");
 
-    let drawing = false;
-    let tool = "pen";
-    let history = [];
-    let marksData = {};
+    <div id="mainArea">
+        <div class="toolbar">
+            <label for="imageUpload" class="upload-label">📁 Upload Answer Sheet</label>
+            <input type="file" id="imageUpload" accept="image/*">
+            <button id="penBtn" class="active">✏️ Pen</button>
+            <button id="eraserBtn">🧹 Eraser</button>
+            <button id="tickBtn">✓ Tick</button>
+            <button id="crossBtn">✗ Cross</button>
+            <button id="undoBtn">↶ Undo</button>
+            <button id="clearBtn">🗑️ Clear All</button>
+            <button id="saveBtn">💾 Save State</button>
+        </div>
 
-    function saveState() {
-        history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
-    }
+        <div id="canvasContainer">
+            <canvas id="myCanvas" width="1000" height="1400"></canvas>
+        </div>
+    </div>
 
-    function startDrawing(e) {
-        if (tool == "pen" || tool == "eraser") {
-            drawing = true;
+    <script>
+        const canvas = document.getElementById("myCanvas");
+        const ctx = canvas.getContext("2d");
+        const questionsConfigDiv = document.getElementById("questionsConfig");
+        const resultsDiv = document.getElementById("results");
+
+        let drawing = false;
+        let tool = "pen";
+        let history = [];
+        let currentQuestionId = 1;
+        let draggingBox = null;
+        let dragOffset = { x: 0, y: 0 };
+
+        // Main data structure
+        let evaluationData = {
+            original: null, // Will store original image data
+            marked: null,   // Will store marked canvas state
+            questions: {},  // { q1: { maxMarks: 10, awarded: 8, position: {x, y}, deductions: [] } }
+            timestamp: null
+        };
+
+        // Initialize canvas
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        saveState();
+
+        // Image upload
+        document.getElementById("imageUpload").addEventListener("change", function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    const img = new Image();
+                    img.onload = function () {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+                        evaluationData.original = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        saveState();
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function saveState() {
+            history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+            if (history.length > 20) history.shift();
+            evaluationData.marked = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
+
+        function startDrawing(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (tool === "pen" || tool === "eraser") {
+                drawing = true;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+            } else if (tool === "tick") {
+                saveState();
+                drawTick(x, y);
+            } else if (tool === "cross") {
+                saveState();
+                drawCross(x, y);
+            }
+        }
+
+        function draw(e) {
+            if (!drawing) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (tool === "pen") {
+                ctx.strokeStyle = "red";
+                ctx.lineWidth = 3;
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            } else if (tool === "eraser") {
+                if (evaluationData.original) {
+                    const imgData = evaluationData.original;
+                    const radius = 15;
+                    for (let dy = -radius; dy <= radius; dy++) {
+                        for (let dx = -radius; dx <= radius; dx++) {
+                            if (dx * dx + dy * dy <= radius * radius) {
+                                const px = Math.floor(x + dx);
+                                const py = Math.floor(y + dy);
+                                if (px >= 0 && px < canvas.width && py >= 0 && py < canvas.height) {
+                                    const idx = (py * canvas.width + px) * 4;
+                                    ctx.fillStyle = `rgba(${imgData.data[idx]},${imgData.data[idx + 1]},${imgData.data[idx + 2]},${imgData.data[idx + 3] / 255})`;
+                                    ctx.fillRect(px, py, 1, 1);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    ctx.clearRect(x - 15, y - 15, 30, 30);
+                }
+            }
+        }
+
+        function stopDrawing() {
+            if (drawing) {
+                drawing = false;
+                ctx.closePath();
+                saveState();
+            }
+        }
+
+        function undo() {
+            if (history.length > 1) {
+                history.pop();
+                ctx.putImageData(history[history.length - 1], 0, 0);
+            }
+        }
+
+        function drawTick(x, y) {
+            ctx.strokeStyle = "green";
+            ctx.lineWidth = 4;
             ctx.beginPath();
-            ctx.moveTo(e.offsetX, e.offsetY);
-            saveState();
-        }
-        else if (tool == "tick") {
-            saveState();
-            drawTick(e.offsetX, e.offsetY);
-        }
-        else if (tool == "cross") {
-            saveState();
-            drawCross(e.offsetX, e.offsetY);
-        }
-
-    }
-
-    function draw(e) {
-        if (!drawing) return;
-
-        if (tool == "pen") {
-            ctx.strokeStyle = "black";
-            ctx.lineWidth = 2;
-            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.moveTo(x - 15, y);
+            ctx.lineTo(x - 5, y + 15);
+            ctx.lineTo(x + 20, y - 20);
             ctx.stroke();
         }
-        else if (tool == "eraser") {
-            ctx.clearRect(e.offsetX - 8, e.offsetY - 8, 16, 16);
+
+        function drawCross(x, y) {
+            ctx.strokeStyle = "red";
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(x - 15, y - 15);
+            ctx.lineTo(x + 15, y + 15);
+            ctx.moveTo(x + 15, y - 15);
+            ctx.lineTo(x - 15, y + 15);
+            ctx.stroke();
         }
-    }
 
-    function stopDrawing() {
-        drawing = false;
-        ctx.closePath();
-    }
-
-    function undo() {
-        if (history.length > 0) {
-            let lastState = history.pop();
-            ctx.putImageData(lastState, 0, 0);
+        function addQuestion() {
+            const qId = `Q${currentQuestionId++}`;
+            evaluationData.questions[qId] = {
+                maxMarks: 10,
+                awarded: 0,
+                position: { x: 100, y: 100 + Object.keys(evaluationData.questions).length * 60 },
+                deductions: []
+            };
+            renderQuestions();
+            updateResults();
         }
-    }
 
-    function drawTick(x, y) {
-        ctx.strokeStyle = "green";
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(x - 10, y);
-        ctx.lineTo(x + 3, y + 10);
-        ctx.lineTo(x + 25, y - 15);
-        ctx.stroke();
-    }
+        function renderQuestions() {
+            questionsConfigDiv.innerHTML = "";
+            for (const qId in evaluationData.questions) {
+                const q = evaluationData.questions[qId];
+                const div = document.createElement("div");
+                div.className = "question-config";
+                div.innerHTML = `
+                    <strong>${qId}</strong><br>
+                    <label>Max Marks:</label>
+                    <input type="number" value="${q.maxMarks}" onchange="updateMaxMarks('${qId}', this.value)"><br>
+                    <button onclick="addMarkBox('${qId}')">Add to Canvas</button>
+                    <button onclick="deleteQuestion('${qId}')" style="background: #f44336;">Delete</button>
+                `;
+                questionsConfigDiv.appendChild(div);
+            }
+        }
 
-    function drawCross(x, y) {
-        ctx.strokeStyle = "red";
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(x - 10, y - 10);
-        ctx.lineTo(x + 10, y + 10);
-        ctx.lineTo(x, y);
-        ctx.lineTo(x + 10, y - 10);
-        ctx.lineTo(x - 10, y + 10);
-        ctx.stroke();
-    }
+        function updateMaxMarks(qId, value) {
+            evaluationData.questions[qId].maxMarks = parseFloat(value) || 0;
+            updateResults();
+        }
 
-    function addBox(question) {
-        const box = document.createElement("div");
-        box.className = "markBox";
-        box.style.left = "100px";
-        box.style.top = "100px";
+        function deleteQuestion(qId) {
+            delete evaluationData.questions[qId];
+            const boxes = document.querySelectorAll(`.markBox[data-question="${qId}"]`);
+            boxes.forEach(box => box.remove());
+            renderQuestions();
+            updateResults();
+        }
 
-        const select = document.createElement("select");
-        [0, 1, 2, 3, 4, 5].forEach(m => {
-            const opt = document.createElement("option");
-            opt.value = m;
-            opt.textContent = m;
-            select.appendChild(opt);
+        function addMarkBox(qId) {
+            const q = evaluationData.questions[qId];
+            const box = document.createElement("div");
+            box.className = "markBox";
+            box.dataset.question = qId;
+            box.style.left = q.position.x + "px";
+            box.style.top = q.position.y + "px";
+
+            box.innerHTML = `
+                <div class="markBox-header">${qId} (Max: ${q.maxMarks})</div>
+                <label>Marks Awarded:</label>
+                <input type="number" step="0.5" value="${q.awarded}" max="${q.maxMarks}" 
+                       onchange="updateAwardedMarks('${qId}', this.value)" 
+                       onkeyup="updateAwardedMarks('${qId}', this.value)">
+                <button class="deleteBtn" onclick="removeMarkBox(this)">Remove</button>
+            `;
+
+            box.addEventListener("mousedown", startDrag);
+            document.getElementById("canvasContainer").appendChild(box);
+            updateResults();
+        }
+
+        function updateAwardedMarks(qId, value) {
+            const val = parseFloat(value) || 0;
+            const max = evaluationData.questions[qId].maxMarks;
+            evaluationData.questions[qId].awarded = Math.min(val, max);
+            updateResults();
+
+            // Visual feedback if marks exceed max
+            const boxes = document.querySelectorAll(`.markBox[data-question="${qId}"]`);
+            boxes.forEach(box => {
+                if (val > max) {
+                    box.classList.add("error");
+                } else {
+                    box.classList.remove("error");
+                }
+            });
+        }
+
+        function removeMarkBox(btn) {
+            btn.parentElement.remove();
+        }
+
+        function startDrag(e) {
+            if (e.target.tagName === "INPUT" || e.target.tagName === "BUTTON") return;
+            draggingBox = e.currentTarget;
+            const rect = draggingBox.getBoundingClientRect();
+            dragOffset.x = e.clientX - rect.left;
+            dragOffset.y = e.clientY - rect.top;
+            document.addEventListener("mousemove", drag);
+            document.addEventListener("mouseup", stopDrag);
+        }
+
+        function drag(e) {
+            if (!draggingBox) return;
+            const container = document.getElementById("canvasContainer");
+            const rect = container.getBoundingClientRect();
+            let x = e.clientX - rect.left - dragOffset.x;
+            let y = e.clientY - rect.top - dragOffset.y;
+            draggingBox.style.left = x + "px";
+            draggingBox.style.top = y + "px";
+
+            const qId = draggingBox.dataset.question;
+            evaluationData.questions[qId].position = { x, y };
+        }
+
+        function stopDrag() {
+            draggingBox = null;
+            document.removeEventListener("mousemove", drag);
+            document.removeEventListener("mouseup", stopDrag);
+        }
+
+        function updateResults() {
+            resultsDiv.innerHTML = "";
+            let total = 0;
+            let maxTotal = 0;
+
+            for (const qId in evaluationData.questions) {
+                const q = evaluationData.questions[qId];
+                total += q.awarded;
+                maxTotal += q.maxMarks;
+
+                const div = document.createElement("div");
+                div.className = "result-item";
+                div.innerHTML = `<span>${qId}:</span><span>${q.awarded}/${q.maxMarks}</span>`;
+                resultsDiv.appendChild(div);
+            }
+
+            const totalDiv = document.createElement("div");
+            totalDiv.className = "result-item total";
+            totalDiv.innerHTML = `<span>TOTAL:</span><span>${total}/${maxTotal}</span>`;
+            resultsDiv.appendChild(totalDiv);
+
+            const percentage = maxTotal > 0 ? ((total / maxTotal) * 100).toFixed(1) : 0;
+            const percentDiv = document.createElement("div");
+            percentDiv.className = "result-item";
+            percentDiv.innerHTML = `<span>Percentage:</span><span>${percentage}%</span>`;
+            resultsDiv.appendChild(percentDiv);
+        }
+
+        function clearAll() {
+            if (confirm("Clear all markings? This cannot be undone.")) {
+                if (evaluationData.original) {
+                    ctx.putImageData(evaluationData.original, 0, 0);
+                } else {
+                    ctx.fillStyle = "white";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+                history = [];
+                saveState();
+            }
+        }
+
+        function saveEvaluation() {
+            evaluationData.timestamp = new Date().toISOString();
+            const dataStr = JSON.stringify(evaluationData.questions, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `evaluation_${Date.now()}.json`;
+            a.click();
+            alert("Evaluation data saved!");
+        }
+
+        // Tool selection
+        document.getElementById("penBtn").addEventListener("click", () => {
+            tool = "pen";
+            document.querySelectorAll(".toolbar button").forEach(b => b.classList.remove("active"));
+            document.getElementById("penBtn").classList.add("active");
         });
-        select.onchange = () => {
-            marksData[question] = { marks: select.value, position: { x: 100, y: 100 } };
-            updateSidebar();
-        };
-        box.appendChild(select);
-        document.body.appendChild(box);
-    }
 
-    function updateSidebar() {
-        scoresDiv.innerHTML = "";
-        for (const q in marksData) {
-            scoresDiv.innerHTML += `<div>${q}: ${marksData[q].marks}</div>`;
-        }
-    }
+        document.getElementById("eraserBtn").addEventListener("click", () => {
+            tool = "eraser";
+            document.querySelectorAll(".toolbar button").forEach(b => b.classList.remove("active"));
+            document.getElementById("eraserBtn").classList.add("active");
+        });
 
-    canvas.addEventListener("mousedown", startDrawing);
-    canvas.addEventListener("mousemove", draw);
-    canvas.addEventListener("mouseup", stopDrawing);
-    canvas.addEventListener("mouseleave", stopDrawing);
+        document.getElementById("tickBtn").addEventListener("click", () => {
+            tool = "tick";
+            document.querySelectorAll(".toolbar button").forEach(b => b.classList.remove("active"));
+            document.getElementById("tickBtn").classList.add("active");
+        });
 
-    document.getElementById("penBtn").addEventListener("click", () => tool = "pen");
-    document.getElementById("eraserBtn").addEventListener("click", () => tool = "eraser");
-    document.getElementById("tickBtn").addEventListener("click", () => tool = "tick");
-    document.getElementById("crossBtn").addEventListener("click", () => tool = "cross");
-    document.getElementById("undoBtn").addEventListener("click", undo);
+        document.getElementById("crossBtn").addEventListener("click", () => {
+            tool = "cross";
+            document.querySelectorAll(".toolbar button").forEach(b => b.classList.remove("active"));
+            document.getElementById("crossBtn").classList.add("active");
+        });
 
-</script>
+        document.getElementById("undoBtn").addEventListener("click", undo);
+        document.getElementById("clearBtn").addEventListener("click", clearAll);
+        document.getElementById("saveBtn").addEventListener("click", saveEvaluation);
+
+        // Canvas events
+        canvas.addEventListener("mousedown", startDrawing);
+        canvas.addEventListener("mousemove", draw);
+        canvas.addEventListener("mouseup", stopDrawing);
+        canvas.addEventListener("mouseleave", stopDrawing);
+
+        // Initialize
+        renderQuestions();
+        updateResults();
+    </script>
+</body>
 
 </html>
