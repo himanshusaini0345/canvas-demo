@@ -476,19 +476,41 @@
 
         function addMarkBox(qId) {
             const q = evaluationData.questions[qId];
+
+            // Check if adding this box would exceed total marks for this question
+            const existingBoxes = document.querySelectorAll(`.markBox[data-question="${qId}"]`);
+            let currentTotal = 0;
+            existingBoxes.forEach(box => {
+                const input = box.querySelector('input[type="number"]');
+                currentTotal += parseFloat(input.value) || 0;
+            });
+
+            // Don't allow adding box if marks are already at max
+            if (currentTotal >= q.maxMarks) {
+                alert(`Cannot add more marks for ${qId}. Maximum marks (${q.maxMarks}) already reached!`);
+                return;
+            }
+
             const box = document.createElement("div");
             box.className = "markBox";
             box.dataset.question = qId;
-            box.style.left = q.position.x + "px";
-            box.style.top = q.position.y + "px";
+
+            // Position at center-left of canvas
+            const canvasRect = canvas.getBoundingClientRect();
+            const centerY = canvasRect.height / 2;
+            box.style.left = "50px";
+            box.style.top = (centerY + existingBoxes.length * 150) + "px";
+
+            // Calculate remaining marks
+            const remainingMarks = q.maxMarks - currentTotal;
 
             box.innerHTML = `
                 <div class="markBox-header">${qId} (Max: ${q.maxMarks})</div>
                 <label>Marks Awarded:</label>
-                <input type="number" step="0.5" value="${q.awarded}" max="${q.maxMarks}" 
-                       onchange="updateAwardedMarks('${qId}', this.value)" 
-                       onkeyup="updateAwardedMarks('${qId}', this.value)">
-                <button class="deleteBtn" onclick="removeMarkBox(this)">Remove</button>
+                <input type="number" step="0.5" value="0" max="${remainingMarks}" 
+                       onchange="updateAwardedMarks('${qId}', this.value, this)" 
+                       onkeyup="updateAwardedMarks('${qId}', this.value, this)">
+                <button class="deleteBtn" onclick="removeMarkBox(this, '${qId}')">Remove</button>
             `;
 
             box.addEventListener("mousedown", startDrag);
@@ -496,16 +518,39 @@
             updateResults();
         }
 
-        function updateAwardedMarks(qId, value) {
+        function updateAwardedMarks(qId, value, inputElement) {
             const val = parseFloat(value) || 0;
-            const max = evaluationData.questions[qId].maxMarks;
-            evaluationData.questions[qId].awarded = Math.min(val, max);
+            const q = evaluationData.questions[qId];
+
+            // Calculate total marks from all boxes for this question
+            const boxes = document.querySelectorAll(`.markBox[data-question="${qId}"]`);
+            let totalMarks = 0;
+            boxes.forEach(box => {
+                const input = box.querySelector('input[type="number"]');
+                if (input === inputElement) {
+                    totalMarks += val;
+                } else {
+                    totalMarks += parseFloat(input.value) || 0;
+                }
+            });
+
+            // Check if total exceeds max marks
+            if (totalMarks > q.maxMarks) {
+                alert(`Total marks for ${qId} cannot exceed ${q.maxMarks}!`);
+                // Calculate and set the maximum allowed value for this input
+                const otherBoxesTotal = totalMarks - val;
+                const maxAllowed = q.maxMarks - otherBoxesTotal;
+                inputElement.value = Math.max(0, maxAllowed);
+                totalMarks = q.maxMarks;
+            }
+
+            // Update the awarded marks
+            evaluationData.questions[qId].awarded = totalMarks;
             updateResults();
 
-            // Visual feedback if marks exceed max
-            const boxes = document.querySelectorAll(`.markBox[data-question="${qId}"]`);
+            // Visual feedback if at max
             boxes.forEach(box => {
-                if (val > max) {
+                if (totalMarks >= q.maxMarks) {
                     box.classList.add("error");
                 } else {
                     box.classList.remove("error");
@@ -513,8 +558,17 @@
             });
         }
 
-        function removeMarkBox(btn) {
+        function removeMarkBox(btn, qId) {
             btn.parentElement.remove();
+            // Recalculate total marks for this question
+            const boxes = document.querySelectorAll(`.markBox[data-question="${qId}"]`);
+            let totalMarks = 0;
+            boxes.forEach(box => {
+                const input = box.querySelector('input[type="number"]');
+                totalMarks += parseFloat(input.value) || 0;
+            });
+            evaluationData.questions[qId].awarded = totalMarks;
+            updateResults();
         }
 
         function startDrag(e) {
